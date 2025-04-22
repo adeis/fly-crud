@@ -3,9 +3,8 @@ declare(strict_types = 1);
 
 namespace FlyCrud;
 
-use League\Flysystem\FilesystemInterface;
 use League\Flysystem\Filesystem;
-use League\Flysystem\Adapter\Local;
+use League\Flysystem\Local\LocalFilesystemAdapter as Local;
 use ArrayAccess;
 use RuntimeException;
 
@@ -25,7 +24,7 @@ class Directory implements ArrayAccess
         return new static(new Filesystem(new Local($path)), '', $format);
     }
 
-    public function __construct(FilesystemInterface $filesystem, string $path, FormatInterface $format)
+    public function __construct(Filesystem $filesystem, string $path, FormatInterface $format)
     {
         $this->filesystem = $filesystem;
         $this->format = $format;
@@ -101,14 +100,7 @@ class Directory implements ArrayAccess
         }
 
         $path = $this->getDirectoryPath($id);
-
-        if ($this->filesystem->has($path)) {
-            $info = $this->filesystem->getMetadata($path);
-
-            return $info['type'] === 'dir';
-        }
-
-        return false;
+        return $this->filesystem->directoryExists($path);
     }
 
     /**
@@ -117,7 +109,7 @@ class Directory implements ArrayAccess
     public function saveDocument(string $id, Document $document): self
     {
         $this->documents[$id] = $document;
-        $this->filesystem->put($this->getDocumentPath($id), $this->format->stringify($document->getArrayCopy()));
+        $this->filesystem->write($this->getDocumentPath($id), $this->format->stringify($document->getArrayCopy()));
 
         return $this;
     }
@@ -128,7 +120,7 @@ class Directory implements ArrayAccess
     public function createDirectory(string $id): Directory
     {
         $path = $this->getDirectoryPath($id);
-        $this->filesystem->createDir($path);
+        $this->filesystem->createDirectory($path);
 
         return $this->directories[$id] = new static($this->filesystem, $path, $this->format);
     }
@@ -149,7 +141,7 @@ class Directory implements ArrayAccess
      */
     public function deleteDirectory(string $id): self
     {
-        $this->filesystem->deleteDir($this->getDirectoryPath($id));
+        $this->filesystem->deleteDirectory($this->getDirectoryPath($id));
         unset($this->directories[$id]);
 
         return $this;
@@ -218,7 +210,7 @@ class Directory implements ArrayAccess
      *
      * @return bool
      */
-    public function offsetExists($id)
+    public function offsetExists($id) : bool
     {
         return $this->hasDocument($id);
     }
@@ -230,7 +222,7 @@ class Directory implements ArrayAccess
      *
      * @return Document
      */
-    public function offsetGet($id)
+    public function offsetGet($id) : Document
     {
         return $this->getDocument($id);
     }
@@ -241,7 +233,7 @@ class Directory implements ArrayAccess
      * @param string   $id
      * @param Document $document
      */
-    public function offsetSet($id, $document)
+    public function offsetSet($id, $document): void
     {
         $this->saveDocument($id, $document);
     }
@@ -251,7 +243,7 @@ class Directory implements ArrayAccess
      *
      * @param string $id
      */
-    public function offsetUnset($id)
+    public function offsetUnset($id): void
     {
         $this->deleteDocument($id);
     }

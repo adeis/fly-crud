@@ -81,13 +81,8 @@ class Directory implements ArrayAccess
 
         $path = $this->getDocumentPath($id);
 
-        if ($this->filesystem->has($path)) {
-            $info = $this->filesystem->getMetadata($path);
+        return $this->filesystem->fileExists($path);
 
-            return $info['type'] === 'file';
-        }
-
-        return false;
     }
 
     /**
